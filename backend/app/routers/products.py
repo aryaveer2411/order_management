@@ -10,7 +10,7 @@ from ..auth import get_current_user, CurrentUser
 from ..cache import cache_delete, cache_delete_pattern, cache_get, cache_set
 from ..database import get_db
 from ..models import Product
-from ..schemas import ProductCreate, ProductUpdate, ProductOut, PaginatedResponse
+from ..schemas import ProductCreate, ProductOut, PaginatedResponse
 
 router = APIRouter(prefix="/products", tags=["Products"])
 
@@ -71,10 +71,10 @@ def get_product(
     return product
 
 
-@router.patch("/{product_id}", response_model=ProductOut)
+@router.put("/{product_id}", response_model=ProductOut)
 def update_product(
     product_id: int,
-    payload: ProductUpdate,
+    payload: ProductCreate,
     db: Session = Depends(get_db),
     current_user: CurrentUser = Depends(get_current_user),
 ):
@@ -82,8 +82,7 @@ def update_product(
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
 
-    update_data = payload.model_dump(exclude_unset=True)
-    for field, value in update_data.items():
+    for field, value in payload.model_dump().items():
         setattr(product, field, value)
 
     try:

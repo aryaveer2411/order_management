@@ -2,6 +2,16 @@
 
 A full-stack inventory and order management application with a FastAPI backend and React frontend.
 
+## Live Demo
+
+| | URL |
+|-|-----|
+| Frontend | https://order-management-black.vercel.app/ |
+| Backend API | https://order-management-pgl3.onrender.com |
+| API Docs (Swagger) | https://order-management-pgl3.onrender.com/docs |
+
+> The backend is hosted on Render's free tier and may take ~30 seconds to wake up on first request.
+
 ## Overview
 
 Multi-tenant system where each user manages their own isolated set of products, customers, and orders. Key capabilities:
@@ -32,20 +42,28 @@ order_mgmt_system/
 │   ├── Dockerfile
 │   ├── requirements.txt
 │   ├── seed.py                  # Seed script (50 customers, products, orders)
-│   └── app/
-│       ├── main.py              # App entry point, CORS, rate limit handler
-│       ├── models.py            # SQLAlchemy models
-│       ├── schemas.py           # Pydantic request/response schemas
-│       ├── database.py          # DB engine and session factory
-│       ├── auth.py              # JWT utilities, refresh token rotation
-│       ├── cache.py             # Redis helpers (get/set/delete)
-│       ├── limiter.py           # slowapi limiter instance
-│       └── routers/
-│           ├── auth.py          # /auth/register, /login, /refresh, /logout
-│           ├── products.py      # /products CRUD
-│           ├── customers.py     # /customers CRUD
-│           ├── orders.py        # /orders CRUD + stock management
-│           └── dashboard.py     # /dashboard aggregates
+│   ├── app/
+│   │   ├── main.py              # App entry point, CORS, rate limit handler
+│   │   ├── models.py            # SQLAlchemy models
+│   │   ├── schemas.py           # Pydantic request/response schemas
+│   │   ├── database.py          # DB engine and session factory
+│   │   ├── auth.py              # JWT utilities, refresh token rotation
+│   │   ├── cache.py             # Redis helpers (get/set/delete/pattern)
+│   │   ├── limiter.py           # slowapi limiter instance
+│   │   └── routers/
+│   │       ├── auth.py          # /auth/register, /login, /refresh, /logout
+│   │       ├── products.py      # /products CRUD + Redis cache
+│   │       ├── customers.py     # /customers CRUD
+│   │       ├── orders.py        # /orders CRUD + stock management
+│   │       └── dashboard.py     # /dashboard aggregates
+│   └── tests/
+│       ├── conftest.py          # pytest fixtures (SQLite in-memory, mocked Redis)
+│       ├── helpers.py           # register_and_login helper
+│       ├── test_auth.py         # register, login, refresh, logout, reuse detection
+│       ├── test_products.py     # CRUD, pagination, SKU conflict, tenant isolation
+│       ├── test_customers.py    # CRUD, pagination, email validation, tenant isolation
+│       ├── test_orders.py       # stock deduction, multi-item, validation, tenant isolation
+│       └── test_dashboard.py    # counts, low-stock, tenant isolation
 └── frontend/
     └── src/
         ├── api/client.js        # Axios instance with auto token refresh
@@ -112,6 +130,29 @@ npm install
 VITE_API_URL=http://localhost:8000 npm run dev
 ```
 
+## Testing
+
+The backend has a full pytest suite that runs against an in-memory SQLite database with Redis mocked — no external services needed.
+
+```bash
+cd backend
+pip install pytest pytest-anyio httpx
+pytest tests/
+```
+
+Test infrastructure (`tests/conftest.py`):
+- SQLite in-memory with `StaticPool` so all sessions share one DB
+- `SELECT FOR UPDATE` patched to a no-op (SQLite doesn't support it)
+- Redis replaced with `MagicMock` — no real Redis instance required
+- `slowapi` rate-limit counters reset before each test
+
+Coverage:
+- **Auth**: registration, login, token refresh, logout, refresh token reuse/revocation (theft detection)
+- **Products**: CRUD, pagination, duplicate SKU (409), invalid inputs (422), multi-tenant isolation
+- **Customers**: CRUD, pagination, duplicate email (409), invalid email (422), multi-tenant isolation
+- **Orders**: stock deduction, multi-item totals, insufficient stock, duplicate product IDs, empty items, stock restoration on delete, multi-tenant isolation
+- **Dashboard**: aggregate counts, low-stock list, multi-tenant isolation
+
 ## Seeding Sample Data
 
 With the backend running, populate 50 customers, 50 products, and 50 orders:
@@ -137,22 +178,22 @@ All endpoints except `/auth/register` and `/auth/login` require a `Bearer` token
 
 ### Products
 
-| Method | Path               | Description                          |
-|--------|--------------------|--------------------------------------|
-| GET    | `/products`        | List products (paginated)            |
-| POST   | `/products`        | Create a product                     |
-| GET    | `/products/{id}`   | Get a product                        |
-| PATCH  | `/products/{id}`   | Update a product                     |
-| DELETE | `/products/{id}`   | Delete a product                     |
+| Method | Path               | Description                                          |
+|--------|--------------------|------------------------------------------------------|
+| GET    | `/products`        | List products (paginated, Redis-cached)              |
+| POST   | `/products`        | Create a product                                     |
+| GET    | `/products/{id}`   | Get a product                                        |
+| PUT    | `/products/{id}`   | Replace a product                                    |
+| DELETE | `/products/{id}`   | Delete a product (409 if product has existing orders)|
 
 ### Customers
 
-| Method | Path                | Description                         |
-|--------|---------------------|-------------------------------------|
-| GET    | `/customers`        | List customers (paginated)          |
-| POST   | `/customers`        | Create a customer                   |
-| GET    | `/customers/{id}`   | Get a customer                      |
-| DELETE | `/customers/{id}`   | Delete a customer                   |
+| Method | Path                | Description                                                      |
+|--------|---------------------|------------------------------------------------------------------|
+| GET    | `/customers`        | List customers (paginated)                                       |
+| POST   | `/customers`        | Create a customer                                                |
+| GET    | `/customers/{id}`   | Get a customer                                                   |
+| DELETE | `/customers/{id}`   | Delete a customer (cascade-deletes orders, restores their stock) |
 
 ### Orders
 
@@ -165,9 +206,15 @@ All endpoints except `/auth/register` and `/auth/login` require a `Bearer` token
 
 ### Dashboard
 
-| Method | Path         | Description                                        |
-|--------|--------------|----------------------------------------------------|
-| GET    | `/dashboard` | Totals + low-stock products (cached for 60s)       |
+| Method | Path         | Description                                                               |
+|--------|--------------|---------------------------------------------------------------------------|
+| GET    | `/dashboard` | Totals + low-stock products + threshold (cached for 60s)                 |
+
+### Health
+
+| Method | Path      | Description          |
+|--------|-----------|----------------------|
+| GET    | `/health` | Returns `{"status": "ok"}` |
 
 ## Environment Variables
 
@@ -181,5 +228,6 @@ All endpoints except `/auth/register` and `/auth/login` require a `Bearer` token
 | `REFRESH_TOKEN_EXPIRE_DAYS`   | `14`         | Refresh token lifetime in days                   |
 | `LOW_STOCK_THRESHOLD`     | `10`             | Stock level that triggers a low-stock alert      |
 | `DASHBOARD_CACHE_TTL`     | `60`             | Dashboard Redis cache TTL in seconds             |
+| `PRODUCTS_CACHE_TTL`      | `30`             | Products list Redis cache TTL in seconds         |
 | `LOGIN_RATE_LIMIT`        | `10/minute`      | IP-based rate limit for `/auth/login`            |
 | `SECURE_COOKIES`          | `1`              | Set to `0` to disable `Secure` flag on cookies (local HTTP dev) |

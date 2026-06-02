@@ -1,6 +1,6 @@
 from decimal import Decimal
 from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
-from typing import Any, Generic, List, Optional, TypeVar
+from typing import Generic, List, TypeVar
 from datetime import datetime
 
 T = TypeVar("T")
@@ -36,35 +36,6 @@ class ProductCreate(BaseModel):
             raise ValueError("Quantity cannot be negative")
         return v
 
-
-class ProductUpdate(BaseModel):
-    name: Optional[str] = Field(default=None, min_length=1)
-    sku: Optional[str] = Field(default=None, min_length=1)
-    price: Optional[Decimal] = None
-    quantity: Optional[int] = None
-
-    @model_validator(mode="before")
-    @classmethod
-    def reject_explicit_nulls(cls, data: Any) -> Any:
-        if isinstance(data, dict):
-            for field in ("name", "sku", "price", "quantity"):
-                if field in data and data[field] is None:
-                    raise ValueError(f"{field} cannot be null")
-        return data
-
-    @field_validator("price")
-    @classmethod
-    def price_must_be_positive(cls, v):
-        if v is not None and v < 0:
-            raise ValueError("Price cannot be negative")
-        return v
-
-    @field_validator("quantity")
-    @classmethod
-    def quantity_must_be_non_negative(cls, v):
-        if v is not None and v < 0:
-            raise ValueError("Quantity cannot be negative")
-        return v
 
 
 class ProductOut(BaseModel):

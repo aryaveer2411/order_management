@@ -20,7 +20,7 @@ export default function Navbar() {
   return (
     <nav className="bg-blue-800 text-white shadow-md">
       <div className="px-4 py-3 flex items-center justify-between">
-        <span className="font-bold text-lg">Order Management</span>
+        <NavLink to="/" className="font-bold text-lg hover:text-blue-200 transition-colors">Order Management</NavLink>
 
         {/* Desktop nav */}
         <div className="hidden md:flex items-center gap-2">
