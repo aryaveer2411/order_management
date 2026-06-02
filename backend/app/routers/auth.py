@@ -35,7 +35,7 @@ def _set_rt_cookie(response: Response, token: str) -> None:
         value=token,
         httponly=True,
         secure=_SECURE_COOKIES,
-        samesite="strict",
+        samesite="none",
         max_age=_RT_MAX_AGE,
         path="/auth",
     )
