@@ -3,11 +3,13 @@ import { getProducts, createProduct, updateProduct, deleteProduct, getDashboard 
 
 import Toast from "../components/Toast";
 import Pagination from "../components/Pagination";
+import { ShimmerTableRows } from "../components/ShimmerLoading";
 
 const emptyForm = { name: "", sku: "", price: "", quantity: "" };
 
 export default function Products() {
   const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState({ total: 0, pages: 1, size: 10 });
   const [form, setForm] = useState(emptyForm);
@@ -18,7 +20,7 @@ export default function Products() {
   const [lowStockThreshold, setLowStockThreshold] = useState(10);
 
   useEffect(() => {
-    document.title = "Order Management | Products";
+    document.title = "Products";
   }, []);
 
   useEffect(() => {
@@ -26,10 +28,12 @@ export default function Products() {
   }, []);
 
   const load = useCallback((p = page) => {
+    setLoading(true);
     getProducts(p, 10).then((res) => {
       setProducts(res.data.items);
       setPagination({ total: res.data.total, pages: res.data.pages, size: res.data.size });
-    }).catch(() => setToast({ message: "Failed to load products", type: "error" }));
+      setLoading(false);
+    }).catch(() => { setToast({ message: "Failed to load products", type: "error" }); setLoading(false); });
   }, [page]);
 
   useEffect(() => { load(page); }, [page, load]);
@@ -98,6 +102,10 @@ export default function Products() {
             </tr>
           </thead>
           <tbody>
+            {loading ? (
+              <ShimmerTableRows cols={5} rows={6} />
+            ) : (
+            <>
             {products.length === 0 && (
               <tr><td colSpan={5} className="text-center py-6 text-gray-400">No products yet</td></tr>
             )}
@@ -113,6 +121,8 @@ export default function Products() {
                 </td>
               </tr>
             ))}
+            </>
+            )}
           </tbody>
         </table>
       </div>

@@ -12,7 +12,7 @@ export default function Login() {
   const timerRef = useRef(null);
 
   useEffect(() => {
-    document.title = "Order Management | Login";
+    document.title = "Login";
   }, []);
 
   useEffect(() => {

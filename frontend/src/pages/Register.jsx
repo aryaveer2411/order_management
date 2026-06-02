@@ -11,7 +11,7 @@ export default function Register() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    document.title = "Order Management | Register";
+    document.title = "Register";
   }, []);
 
   async function handleSubmit(e) {

@@ -2,11 +2,13 @@ import { useEffect, useState, useCallback } from "react";
 import { getCustomers, createCustomer, deleteCustomer } from "../api/client";
 import Toast from "../components/Toast";
 import Pagination from "../components/Pagination";
+import { ShimmerTableRows } from "../components/ShimmerLoading";
 
 const emptyForm = { full_name: "", email: "", phone: "" };
 
 export default function Customers() {
   const [customers, setCustomers] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState({ total: 0, pages: 1, size: 10 });
   const [form, setForm] = useState(emptyForm);
@@ -15,14 +17,16 @@ export default function Customers() {
   const [errors, setErrors] = useState({});
 
   useEffect(() => {
-    document.title = "Order Management | Customers";
+    document.title = "Customers";
   }, []);
 
   const load = useCallback((p = page) => {
+    setLoading(true);
     getCustomers(p, 10).then((res) => {
       setCustomers(res.data.items);
       setPagination({ total: res.data.total, pages: res.data.pages, size: res.data.size });
-    }).catch(() => setToast({ message: "Failed to load customers", type: "error" }));
+      setLoading(false);
+    }).catch(() => { setToast({ message: "Failed to load customers", type: "error" }); setLoading(false); });
   }, [page]);
 
   useEffect(() => { load(page); }, [page, load]);
@@ -81,6 +85,10 @@ export default function Customers() {
             </tr>
           </thead>
           <tbody>
+            {loading ? (
+              <ShimmerTableRows cols={4} rows={6} />
+            ) : (
+            <>
             {customers.length === 0 && (
               <tr><td colSpan={4} className="text-center py-6 text-gray-400">No customers yet</td></tr>
             )}
@@ -94,6 +102,8 @@ export default function Customers() {
                 </td>
               </tr>
             ))}
+            </>
+            )}
           </tbody>
         </table>
       </div>

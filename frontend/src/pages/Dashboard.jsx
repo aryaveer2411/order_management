@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { getDashboard } from "../api/client";
+import { ShimmerDashboard } from "../components/ShimmerLoading";
 
 export default function Dashboard() {
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    document.title = "Order Management | Dashboard";
+    document.title = "Dashboard";
   }, []);
 
   useEffect(() => {
@@ -16,7 +17,7 @@ export default function Dashboard() {
   }, []);
 
   if (error) return <p className="text-red-500 p-6">{error}</p>;
-  if (!data) return <p className="p-6 text-gray-500">Loading...</p>;
+  if (!data) return <ShimmerDashboard />;
 
   return (
     <div className="p-4 sm:p-6 max-w-5xl mx-auto">

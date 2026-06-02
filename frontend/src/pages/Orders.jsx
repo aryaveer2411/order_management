@@ -2,9 +2,11 @@ import { useEffect, useState, useCallback } from "react";
 import { getOrders, getOrder, createOrder, deleteOrder, getCustomers, getProducts } from "../api/client";
 import Toast from "../components/Toast";
 import Pagination from "../components/Pagination";
+import { ShimmerTableRows } from "../components/ShimmerLoading";
 
 export default function Orders() {
   const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState({ total: 0, pages: 1, size: 10 });
   const [customers, setCustomers] = useState([]);
@@ -14,14 +16,16 @@ export default function Orders() {
   const [toast, setToast] = useState(null);
 
   useEffect(() => {
-    document.title = "Order Management | Orders";
+    document.title = "Orders";
   }, []);
 
   const load = useCallback((p = page) => {
+    setLoading(true);
     getOrders(p, 10).then((res) => {
       setOrders(res.data.items);
       setPagination({ total: res.data.total, pages: res.data.pages, size: res.data.size });
-    }).catch(() => setToast({ message: "Failed to load orders", type: "error" }));
+      setLoading(false);
+    }).catch(() => { setToast({ message: "Failed to load orders", type: "error" }); setLoading(false); });
   }, [page]);
 
   async function fetchAll(fetchFn, setter) {
@@ -90,6 +94,10 @@ export default function Orders() {
             </tr>
           </thead>
           <tbody>
+            {loading ? (
+              <ShimmerTableRows cols={5} rows={6} />
+            ) : (
+            <>
             {orders.length === 0 && (
               <tr><td colSpan={5} className="text-center py-6 text-gray-400">No orders yet</td></tr>
             )}
@@ -105,6 +113,8 @@ export default function Orders() {
                 </td>
               </tr>
             ))}
+            </>
+            )}
           </tbody>
         </table>
       </div>
