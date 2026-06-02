@@ -6,6 +6,10 @@ export default function Dashboard() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    document.title = "Order Management | Dashboard";
+  }, []);
+
+  useEffect(() => {
     getDashboard()
       .then((res) => setData(res.data))
       .catch(() => setError("Failed to load dashboard data"));

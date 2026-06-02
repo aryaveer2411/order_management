@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { getProducts, createProduct, updateProduct, deleteProduct, getDashboard } from "../api/client";
+
 import Toast from "../components/Toast";
 import Pagination from "../components/Pagination";
 
@@ -15,6 +16,10 @@ export default function Products() {
   const [toast, setToast] = useState(null);
   const [errors, setErrors] = useState({});
   const [lowStockThreshold, setLowStockThreshold] = useState(10);
+
+  useEffect(() => {
+    document.title = "Order Management | Products";
+  }, []);
 
   useEffect(() => {
     getDashboard().then((res) => setLowStockThreshold(res.data.low_stock_threshold)).catch(() => {});

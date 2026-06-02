@@ -13,6 +13,10 @@ export default function Orders() {
   const [detailOrder, setDetailOrder] = useState(null);
   const [toast, setToast] = useState(null);
 
+  useEffect(() => {
+    document.title = "Order Management | Orders";
+  }, []);
+
   const load = useCallback((p = page) => {
     getOrders(p, 10).then((res) => {
       setOrders(res.data.items);

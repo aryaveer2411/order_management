@@ -14,6 +14,10 @@ export default function Customers() {
   const [toast, setToast] = useState(null);
   const [errors, setErrors] = useState({});
 
+  useEffect(() => {
+    document.title = "Order Management | Customers";
+  }, []);
+
   const load = useCallback((p = page) => {
     getCustomers(p, 10).then((res) => {
       setCustomers(res.data.items);
