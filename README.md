@@ -130,6 +130,34 @@ npm install
 VITE_API_URL=http://localhost:8000 npm run dev
 ```
 
+## Git Hook (Pre-commit Tests)
+
+A pre-commit hook runs both backend and frontend tests before every commit. Since `.git/hooks` is not tracked by git, you need to set it up manually after cloning:
+
+```bash
+cat > .git/hooks/pre-commit << 'EOF'
+#!/bin/sh
+
+ROOT="$(git rev-parse --show-toplevel)"
+
+echo "Running backend tests..."
+cd "$ROOT/backend" && python3 -m pytest
+BACKEND_EXIT=$?
+
+echo "Running frontend tests..."
+cd "$ROOT/frontend" && npm run test:run
+FRONTEND_EXIT=$?
+
+if [ $BACKEND_EXIT -ne 0 ] || [ $FRONTEND_EXIT -ne 0 ]; then
+  echo "Tests failed. Commit aborted."
+  exit 1
+fi
+
+exit 0
+EOF
+chmod +x .git/hooks/pre-commit
+```
+
 ## Testing
 
 The backend has a full pytest suite that runs against an in-memory SQLite database with Redis mocked — no external services needed.
